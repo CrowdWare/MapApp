@@ -7,9 +7,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -34,17 +45,32 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.gms.location.LocationServices
 import com.mapbox.mapboxsdk.geometry.LatLng
-import com.mapbox.mapboxsdk.maps.MapView
 import com.maplibre.compose.MapView
 import com.maplibre.compose.camera.MapViewCamera
 import com.maplibre.compose.rememberSaveableMapViewCamera
 import com.maplibre.compose.symbols.Symbol
-import com.maplibre.compose.symbols.models.SymbolOffset
 import kotlinx.coroutines.launch
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardElevation
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +86,8 @@ class MainActivity : ComponentActivity() {
                     val locations by viewModel.locations.observeAsState(emptyList())
                     var userLocation by remember { mutableStateOf<LatLng?>(null) }
                     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+                    var showDialog by remember { mutableStateOf(false) }
+                    var selectedLocation by remember { mutableStateOf<LocationItem?>(null) }
 
                     LaunchedEffect(Unit) {
                         if (ContextCompat.checkSelfPermission(
@@ -84,27 +112,38 @@ class MainActivity : ComponentActivity() {
                                 zoom = 15.0
                             )
                         )
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            MapView(
+                                modifier = Modifier.padding(innerPadding),
+                                styleUrl = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+                                camera = mapViewCamera
+                            ) {
+                                Symbol(
+                                    center = userLocation!!,
+                                    size = 2f,
+                                    imageId = R.drawable.home,
+                                    onTap = {
+                                        println("Eigener Standort")
+                                        selectedLocation = LocationItem("","Eigener Standort", "", null)
+                                        showDialog = true
+                                    }
+                                )
 
-                        MapView(modifier = Modifier.padding(innerPadding),
-                            styleUrl = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
-                            camera = mapViewCamera,
-                            onTapGestureCallback = { println("SymbolExample Tapped at $it") }
-                        ) {
-                            Symbol(
-                                center = userLocation!!,
-                                size = 2f,
-                                imageId = R.drawable.home,
-                                onTap = { println("Eigener Standort") }
-                            )
-
-                            locations.forEach { location ->
-                                location.position?.coordinates?.let { coords ->
-                                    Symbol(
-                                        center = LatLng(coords[0], coords[1]), // Latitude, Longitude
-                                        size = 2f,
-                                        imageId = R.drawable.marker,
-                                        onTap = { println("Location: ${location.name}") }
-                                    )
+                                locations.forEach { location ->
+                                    location.position?.coordinates?.let { coords ->
+                                        Symbol(
+                                            center = LatLng(
+                                                coords[0],
+                                                coords[1]
+                                            ), // Latitude, Longitude
+                                            size = 2f,
+                                            imageId = R.drawable.marker,
+                                            onTap = {
+                                                selectedLocation = location
+                                                showDialog = true
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -117,11 +156,108 @@ class MainActivity : ComponentActivity() {
                             CircularProgressIndicator()
                         }
                     }
+
+                    if (showDialog && selectedLocation != null) {
+                        LocationDialog(showDialog, selectedLocation, onDismiss = {showDialog = false})
+                    }
                 }
             }
         }
     }
 }
+
+@Composable
+fun LocationDialog(
+    showDialog: Boolean,
+    selectedLocation: LocationItem?,
+    onDismiss: () -> Unit
+) {
+    if (showDialog && selectedLocation != null) {
+        Dialog(onDismissRequest = onDismiss) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                elevation = androidx.compose.material3.CardDefaults.cardElevation(
+                    defaultElevation = 8.dp
+                )
+            ) {
+                Box(modifier = Modifier.padding(16.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth() // Füllt die Breite, aber nicht die Höhe
+                            .padding(end = 40.dp) // Platz für den IconButton reservieren
+                    ) {
+                        selectedLocation.name?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.headlineMedium
+                            )
+                        }
+                        selectedLocation.text?.let { text ->
+                            val scrollState = rememberScrollState()
+                            Box {
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier
+                                        .heightIn(max = 200.dp)
+                                        .verticalScroll(scrollState)
+                                )
+                                // Sichtbare Scrollbar, wenn scrollbar
+                                if (scrollState.maxValue > 0) { // Nur anzeigen, wenn scrollbar
+                                    VerticalScrollbar(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterEnd)
+                                            .height(200.dp),
+                                        scrollState = scrollState
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd) // Oben rechts im Box
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Schließen")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun VerticalScrollbar(
+    modifier: Modifier = Modifier,
+    scrollState: ScrollState
+) {
+    val scrollbarHeight = with(LocalDensity.current) {
+        val contentHeight = scrollState.maxValue + 200.dp.toPx() // Gesamthöhe des scrollbaren Inhalts
+        val visibleHeight = 200.dp.toPx() // Sichtbare Höhe
+        (visibleHeight * visibleHeight / contentHeight).toDp() // Proportionale Scrollbar-Höhe
+    }
+    val scrollbarOffset = with(LocalDensity.current) {
+        val scrollFraction = scrollState.value.toFloat() / scrollState.maxValue
+        val maxOffset = 200.dp.toPx() - scrollbarHeight.toPx()
+        (scrollFraction * maxOffset).toDp()
+    }
+
+    Box(
+        modifier = modifier
+            .width(8.dp)
+            .background(Color.Transparent)
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(y = scrollbarOffset)
+                .width(8.dp)
+                .height(scrollbarHeight)
+                .background(Color.Gray.copy(alpha = 0.5f))
+        )
+    }
+}
+
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -140,6 +276,7 @@ fun RequestLocationPermission() {
 data class LocationItem(
     val id: String,
     val name: String?,
+    val text: String?,
     val position: Position?
 )
 
@@ -190,6 +327,7 @@ class LocationViewModel : ViewModel() {
                                 LocationItem(
                                     id = location.id,
                                     name = location.name ?: "Unbekannter Ort",
+                                    text = location.text ?: "",
                                     position = Position("Point", listOf(coords[1], coords[0])) // Latitude, Longitude
                                 )
                             } else null
