@@ -1,9 +1,11 @@
 package at.crowdware.mapapp
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -70,6 +72,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.app.ActivityCompat
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
+import kotlinx.coroutines.withTimeoutOrNull
 
 
 class MainActivity : ComponentActivity() {
@@ -88,20 +96,46 @@ class MainActivity : ComponentActivity() {
                     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
                     var showDialog by remember { mutableStateOf(false) }
                     var selectedLocation by remember { mutableStateOf<LocationItem?>(null) }
+                    var locationFound by remember { mutableStateOf(false) }
+
+                    //val berlin = LatLng(52.52, 13.405) // Berlin Koordinaten
+                    val europeCenter = LatLng(49.0, 11.0)
 
                     LaunchedEffect(Unit) {
+                        // Berechtigungen überprüfen
                         if (ContextCompat.checkSelfPermission(
                                 context,
                                 Manifest.permission.ACCESS_FINE_LOCATION
                             ) == PackageManager.PERMISSION_GRANTED
                         ) {
-                            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-                                location?.let {
-                                    userLocation = LatLng(it.latitude, it.longitude)
+                            // Startet die Location-Abfrage
+                            val locationRequest = fusedLocationClient.lastLocation
+
+                            val locationResult = withTimeoutOrNull(5000L) { // 5 Sekunden Timeout
+                                locationRequest.addOnSuccessListener { location: Location? ->
+                                    location?.let {
+                                        userLocation = LatLng(it.latitude, it.longitude)
+                                        locationFound = true
+                                    }
+                                }?.addOnFailureListener { exception ->
+                                    // Fehlerbehandlung
+                                    println("Error getting location: ${exception.message}")
                                 }
                             }
+
+                            // Falls keine Position gefunden wird, zentriere auf Berlin
+                            if (userLocation == null) {
+                                println("No location found, centering map on Berlin")
+                                // Hier kannst du die Kamera auf Berlin zentrieren
+                                userLocation = europeCenter
+                            }
+                        } else {
+                            println("not find location, permission not granted")
+                            // Optionale Aufforderung zur Berechtigungsanfrage
+                            ActivityCompat.requestPermissions(context as Activity, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
                         }
                     }
+
 
                     // 🌍 Warte, bis der Standort verfügbar ist, bevor die Karte angezeigt wird
                     if (userLocation != null) {
@@ -109,7 +143,7 @@ class MainActivity : ComponentActivity() {
                             initialCamera = MapViewCamera.Centered(
                                 latitude = userLocation!!.latitude,
                                 longitude = userLocation!!.longitude,
-                                zoom = 15.0
+                                zoom = 7.0//15.0
                             )
                         )
                         Box(modifier = Modifier.fillMaxSize()) {
@@ -118,16 +152,19 @@ class MainActivity : ComponentActivity() {
                                 styleUrl = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
                                 camera = mapViewCamera
                             ) {
-                                Symbol(
-                                    center = userLocation!!,
-                                    size = 2f,
-                                    imageId = R.drawable.home,
-                                    onTap = {
-                                        println("Eigener Standort")
-                                        selectedLocation = LocationItem("","Eigener Standort", "", null)
-                                        showDialog = true
-                                    }
-                                )
+                                if(locationFound) {
+                                    Symbol(
+                                        center = userLocation!!,
+                                        size = 2f,
+                                        imageId = R.drawable.home,
+                                        onTap = {
+                                            println("Eigener Standort")
+                                            selectedLocation =
+                                                LocationItem("", "Eigener Standort", "", null)
+                                            showDialog = true
+                                        }
+                                    )
+                                }
 
                                 locations.forEach { location ->
                                     location.position?.coordinates?.let { coords ->
