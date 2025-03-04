@@ -4,7 +4,7 @@ MapApp ist eine Beispiel-Android-Anwendung, die die Integration von [MapLibre](h
 
 ## Funktionen
 
-- **Kartenanzeige**: Zeigt interaktive Karten mit Zoom- und Schwenkfunktionen an. [oai_citation_attribution:0‡github.com](https://github.com/CrowdWare)
+- **Kartenanzeige**: Zeigt interaktive Karten mit Zoom- und Schwenkfunktionen an.
 - **Benutzerstandort**: Zeigt den aktuellen Standort des Benutzers auf der Karte an.
 - **Marker**: Fügt Marker hinzu, um bestimmte Orte auf der Karte hervorzuheben.
 
@@ -17,13 +17,37 @@ MapApp ist eine Beispiel-Android-Anwendung, die die Integration von [MapLibre](h
 
 1. Klonen Sie das Repository:
 
-   ```bash
-   git clone https://github.com/CrowdWare/MapApp.git
-   ```
+```bash
+git clone https://github.com/CrowdWare/MapApp.git
+```
 
-2.	Öffnen Sie das Projekt in Android Studio.
-3.	Synchronisieren Sie die Gradle-Dateien und stellen Sie sicher, dass alle Abhängigkeiten korrekt geladen werden.
-4.	Starten Sie die Anwendung auf einem verbundenen Android-Gerät oder Emulator.
+2.	In das Projektverzeichnis wechseln:
+```bash
+cd MapApp
+```
+
+3.	Gradle-Build ausführen:
+•	Unter macOS/Linux:
+```bash
+./gradlew assembleDebug
+```
+•	Unter Windows:
+```bash
+gradlew.bat assembleDebug
+```
+
+Dieser Befehl erstellt eine Debug-Version der Anwendung.
+
+4.	APK auf ein Gerät oder einen Emulator installieren:
+•	Unter macOS/Linux:
+```bash
+./gradlew installDebug
+```
+
+•	Unter Windows:
+```bash
+gradlew.bat installDebug
+```
 
 ## Verwendung
 •	Karteninteraktion: Nutzen Sie die üblichen Gesten wie Ziehen, Zoomen und Drehen, um die Karte zu erkunden.
