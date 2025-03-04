@@ -1,6 +1,13 @@
 # MapApp
 
 MapApp ist eine Beispiel-Android-Anwendung, die die Integration von [MapLibre](https://maplibre.org/) demonstriert. MapLibre ist eine Open-Source-Bibliothek zur Darstellung von Karten in mobilen und Webanwendungen.
+Ein lanfristiges Ziel ist es die Funktionalität dem Projekt [NoCodeDesigner](https://github.com/CrowdWare/NoCodeDesigner) zur Verfügung zu stellen, damit der Entwickler die Kartenfunktion mit einfachen Tags in seine App einbauen kann.
+```qml
+MapLibre {
+  url: "<url to fetch the geolocations>"
+}
+```
+
 
 ## Funktionen
 
